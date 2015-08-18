@@ -40,8 +40,8 @@ export default Ember.Component.extend({
     // this.lastCell = undefined;
     // this.cellCount = undefined;
     this.contentElement = undefined;
-    this.cells = [];
-    this.cellMap = Object.create(null);
+    this._cells = [];
+    this._cellMap = Object.create(null);
 
     this._super();
   },
@@ -68,13 +68,7 @@ export default Ember.Component.extend({
     var calculateSize = false;
 
     if (this._cellLayout !== cellLayout || this._items !== items) {
-      if (this._items != null && this._items !== items ) {
-        this._items.removeArrayObserver(this);
-      }
-      this._items = items;
-      if (this._items != null) {
-        this._items.addArrayObserver(this);
-      }
+      this.set('_items', items);
       this._cellLayout = cellLayout;
       calculateSize = true;
     }
@@ -88,10 +82,7 @@ export default Ember.Component.extend({
        Ember.run.scheduleOnce('afterRender', this, 'calculateContentSize');
     }
   },
-  arrayWillChange() { },
-  arrayDidChange() {
-    this.rerender();
-  },
+
   didInsertElement() {
     this._super();
     this.contentElement = this.element.firstElementChild;
@@ -127,12 +118,12 @@ export default Ember.Component.extend({
     // cancelable and it should be canceled inside of willDestroyElement.
     callback();
   },
-  willDestroyElement() {
-    this._super();
-    if (this._items != null) {
-      this._items.removeArrayObserver(this);
-    }
-  },
+
+  cells: Ember.computed('_items.[]', function() {
+    this.updateCells();
+    return this._cells;
+  }),
+
   setupScroller() {
     //this.element.addEventListener('scroll', Ember.run.bind(this, 'updateOffset'));
     // TODO save for teardown
@@ -145,14 +136,14 @@ export default Ember.Component.extend({
   //     this.rerender();
   //   }
   // },
-  willRender() {
+  updateCells() {
     if (!this._items) { return; }
     if (this._cellLayout.length !== this._items.length) {
       this._cellLayout.length = this._items.length;
       this.calculateContentSize();
     }
 
-    var priorMap = this.cellMap;
+    var priorMap = this._cellMap;
     var cellMap = Object.create(null);
 
     var index = this._cellLayout.indexAt(this._offsetX, this._offsetY, this._width, this._height);
@@ -184,8 +175,8 @@ export default Ember.Component.extend({
       }
     }
 
-    for (i=0; i<this.cells.length; i++) {
-      cell = this.cells[i];
+    for (i=0; i<this._cells.length; i++) {
+      cell = this._cells[i];
       if (!cellMap[cell.key]) {
         if (newItems.length) {
           itemIndex = newItems.pop();
@@ -216,9 +207,9 @@ export default Ember.Component.extend({
       style = formatStyle(pos, width, height);
       cell = new Cell(itemKey, items[itemIndex], itemIndex, style);
       cellMap[itemKey] = cell;
-      this.cells.pushObject(cell);
+      this._cells.pushObject(cell);
     }
-    this.cellMap = cellMap;
+    this._cellMap = cellMap;
   },
   calculateBounds() {
     // make sure rendered before accessing style.
